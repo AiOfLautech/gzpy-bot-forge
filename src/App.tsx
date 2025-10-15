@@ -10,6 +10,7 @@ import CreateBot from "./pages/CreateBot";
 import BotManagement from "./pages/BotManagement";
 import Admin from "./pages/Admin";
 import Notifications from "./pages/Notifications";
+import BotControl from "./pages/BotControl";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/create-bot" element={<CreateBot />} />
           <Route path="/bot/:botId" element={<BotManagement />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/bot-control" element={<BotControl />} />
           <Route path="/notifications" element={<Notifications />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
