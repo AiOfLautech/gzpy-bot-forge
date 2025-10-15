@@ -15,6 +15,8 @@ const BotManagement = () => {
   const { botId } = useParams();
   const [user, setUser] = useState<User | null>(null);
   const [bot, setBot] = useState<any>(null);
+  const [botStats, setBotStats] = useState<any>(null);
+  const [botUsername, setBotUsername] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isSettingWebhook, setIsSettingWebhook] = useState(false);
 
@@ -44,6 +46,47 @@ const BotManagement = () => {
       setBot(data);
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       setWebhookUrl(`${supabaseUrl}/functions/v1/telegram-bot?bot_id=${data.id}`);
+      
+      // Fetch bot username from Telegram
+      fetchBotUsername(data.telegram_token);
+      
+      // Fetch bot stats
+      fetchBotStats(data.id);
+    }
+  };
+
+  const fetchBotUsername = async (token: string) => {
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const data = await response.json();
+      if (data.ok) {
+        setBotUsername(data.result.username);
+      }
+    } catch (error) {
+      console.error("Failed to fetch bot username:", error);
+    }
+  };
+
+  const fetchBotStats = async (botId: string) => {
+    const { data } = await supabase
+      .from("bot_stats")
+      .select("*")
+      .eq("bot_id", botId)
+      .single();
+    
+    if (data) {
+      setBotStats(data);
+    } else {
+      // Create initial stats
+      await supabase.from("bot_stats").insert({
+        bot_id: botId,
+        total_users: 0,
+        total_groups: 0,
+        total_channels: 0,
+        total_commands: 0,
+        plan: "free",
+      });
+      fetchBotStats(botId);
     }
   };
 
@@ -144,12 +187,96 @@ const BotManagement = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="setup" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="stats" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="stats">Stats</TabsTrigger>
             <TabsTrigger value="setup">Setup</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="commands">Commands</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="stats">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card className="border-border bg-card/50 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle>📊 Bot Statistics</CardTitle>
+                  <CardDescription>Real-time bot metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {botStats && (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg">
+                        <span className="text-sm font-medium">Total Users</span>
+                        <span className="text-2xl font-bold text-primary">{botStats.total_users}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-accent/10 rounded-lg">
+                        <span className="text-sm font-medium">Total Groups</span>
+                        <span className="text-2xl font-bold text-accent">{botStats.total_groups}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-secondary rounded-lg">
+                        <span className="text-sm font-medium">Total Channels</span>
+                        <span className="text-2xl font-bold">{botStats.total_channels}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                        <span className="text-sm font-medium">Commands Executed</span>
+                        <span className="text-2xl font-bold">{botStats.total_commands}</span>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-border bg-card/50 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle>⚡ Bot Info</CardTitle>
+                  <CardDescription>Configuration details</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-gradient-to-r from-primary/20 to-accent/20 rounded-lg border border-primary/30">
+                      <div className="text-xs text-muted-foreground mb-1">Bot Username</div>
+                      <div className="font-mono text-lg font-bold">
+                        @{botUsername || "Loading..."}
+                      </div>
+                      {botUsername && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 w-full"
+                          onClick={() => window.open(`https://t.me/${botUsername}`, "_blank")}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-2" />
+                          Open in Telegram
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="p-4 bg-secondary/50 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">Plan</div>
+                      <div className="text-lg font-bold capitalize">
+                        {botStats?.plan || "Free"} ✨
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">Status</div>
+                      <div className="flex items-center gap-2">
+                        <div className={`h-3 w-3 rounded-full animate-pulse ${bot.is_active ? "bg-green-500" : "bg-red-500"}`} />
+                        <span className="font-semibold">{bot.is_active ? "Active" : "Inactive"}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-primary/10 rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">Created</div>
+                      <div className="text-sm">
+                        {new Date(bot.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="setup">
             <Card className="border-border bg-card/50 backdrop-blur-sm">

@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      bot_stats: {
+        Row: {
+          bot_id: string | null
+          bot_username: string | null
+          created_at: string | null
+          id: string
+          plan: string | null
+          total_channels: number | null
+          total_commands: number | null
+          total_groups: number | null
+          total_users: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          bot_id?: string | null
+          bot_username?: string | null
+          created_at?: string | null
+          id?: string
+          plan?: string | null
+          total_channels?: number | null
+          total_commands?: number | null
+          total_groups?: number | null
+          total_users?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          bot_id?: string | null
+          bot_username?: string | null
+          created_at?: string | null
+          id?: string
+          plan?: string | null
+          total_channels?: number | null
+          total_commands?: number | null
+          total_groups?: number | null
+          total_users?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_stats_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: true
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bots: {
         Row: {
           bot_image_url: string | null
@@ -55,6 +102,53 @@ export type Database = {
           welcome_message?: string | null
         }
         Relationships: []
+      }
+      mini_game_sessions: {
+        Row: {
+          bot_id: string | null
+          coins_earned: number | null
+          created_at: string | null
+          expires_at: string | null
+          game_type: string
+          id: string
+          level: number | null
+          score: number | null
+          session_data: Json | null
+          user_id: string
+        }
+        Insert: {
+          bot_id?: string | null
+          coins_earned?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          game_type: string
+          id?: string
+          level?: number | null
+          score?: number | null
+          session_data?: Json | null
+          user_id: string
+        }
+        Update: {
+          bot_id?: string | null
+          coins_earned?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          game_type?: string
+          id?: string
+          level?: number | null
+          score?: number | null
+          session_data?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mini_game_sessions_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -145,6 +239,71 @@ export type Database = {
           type?: string
         }
         Relationships: []
+      }
+      user_economy: {
+        Row: {
+          balance: number | null
+          bank: number | null
+          bot_id: string | null
+          created_at: string | null
+          id: string
+          inventory: Json | null
+          job: string | null
+          last_crime: string | null
+          last_daily: string | null
+          last_rob: string | null
+          last_work: string | null
+          level: number | null
+          total_messages: number | null
+          updated_at: string | null
+          user_id: string
+          xp: number | null
+        }
+        Insert: {
+          balance?: number | null
+          bank?: number | null
+          bot_id?: string | null
+          created_at?: string | null
+          id?: string
+          inventory?: Json | null
+          job?: string | null
+          last_crime?: string | null
+          last_daily?: string | null
+          last_rob?: string | null
+          last_work?: string | null
+          level?: number | null
+          total_messages?: number | null
+          updated_at?: string | null
+          user_id: string
+          xp?: number | null
+        }
+        Update: {
+          balance?: number | null
+          bank?: number | null
+          bot_id?: string | null
+          created_at?: string | null
+          id?: string
+          inventory?: Json | null
+          job?: string | null
+          last_crime?: string | null
+          last_daily?: string | null
+          last_rob?: string | null
+          last_work?: string | null
+          level?: number | null
+          total_messages?: number | null
+          updated_at?: string | null
+          user_id?: string
+          xp?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_economy_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
