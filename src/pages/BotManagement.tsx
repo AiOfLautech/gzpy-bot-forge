@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { api, session } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,12 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowLeft, Copy, ExternalLink, Power, Trash2 } from "lucide-react";
-import { User } from "@supabase/supabase-js";
 
 const BotManagement = () => {
   const navigate = useNavigate();
   const { botId } = useParams();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [bot, setBot] = useState<any>(null);
   const [botStats, setBotStats] = useState<any>(null);
   const [botUsername, setBotUsername] = useState("");
@@ -21,37 +20,38 @@ const BotManagement = () => {
   const [isSettingWebhook, setIsSettingWebhook] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        navigate("/auth");
-      } else {
-        setUser(user);
-        fetchBot(user.id);
-      }
-    });
+    const currentUser = session.getUser();
+    if (!currentUser) {
+      navigate("/auth");
+    } else {
+      setUser(currentUser);
+      fetchBot();
+    }
   }, [navigate, botId]);
 
-  const fetchBot = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("bots")
-      .select("*")
-      .eq("id", botId)
-      .eq("user_id", userId)
-      .single();
-
-    if (error || !data) {
-      toast.error("Bot not found");
+  const fetchBot = async () => {
+    try {
+      const data = await api.getBotStats(botId!);
+      if (!data) {
+        toast.error("Bot not found");
+        navigate("/dashboard");
+      } else {
+        setBot(data);
+        setBotStats(data.stats);
+        setBotUsername(data.stats?.botUsername || "");
+        
+        // Set webhook URL using Replit domain
+        const domain = import.meta.env.VITE_API_URL || window.location.origin;
+        setWebhookUrl(`${domain}/api/telegram/webhook/${data.id}`);
+        
+        // Fetch bot username from Telegram if not in stats
+        if (data.telegramToken && !data.stats?.botUsername) {
+          fetchBotUsername(data.telegramToken);
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to fetch bot");
       navigate("/dashboard");
-    } else {
-      setBot(data);
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      setWebhookUrl(`${supabaseUrl}/functions/v1/telegram-bot?bot_id=${data.id}`);
-      
-      // Fetch bot username from Telegram
-      fetchBotUsername(data.telegram_token);
-      
-      // Fetch bot stats
-      fetchBotStats(data.id);
     }
   };
 
@@ -68,26 +68,8 @@ const BotManagement = () => {
   };
 
   const fetchBotStats = async (botId: string) => {
-    const { data } = await supabase
-      .from("bot_stats")
-      .select("*")
-      .eq("bot_id", botId)
-      .single();
-    
-    if (data) {
-      setBotStats(data);
-    } else {
-      // Create initial stats
-      await supabase.from("bot_stats").insert({
-        bot_id: botId,
-        total_users: 0,
-        total_groups: 0,
-        total_channels: 0,
-        total_commands: 0,
-        plan: "free",
-      });
-      fetchBotStats(botId);
-    }
+    // Stats are now fetched with the bot data
+    return;
   };
 
   const copyToClipboard = (text: string) => {
@@ -120,16 +102,12 @@ const BotManagement = () => {
   const toggleBotStatus = async () => {
     if (!bot) return;
 
-    const { error } = await supabase
-      .from("bots")
-      .update({ is_active: !bot.is_active })
-      .eq("id", bot.id);
-
-    if (error) {
+    try {
+      await api.updateBot(bot.id, { isActive: !bot.isActive });
+      toast.success(`Bot ${!bot.isActive ? "activated" : "deactivated"}`);
+      fetchBot();
+    } catch (error) {
       toast.error("Failed to update bot status");
-    } else {
-      toast.success(`Bot ${!bot.is_active ? "activated" : "deactivated"}`);
-      fetchBot(user!.id);
     }
   };
 
@@ -137,13 +115,12 @@ const BotManagement = () => {
     if (!bot) return;
     if (!confirm("Are you sure you want to delete this bot?")) return;
 
-    const { error } = await supabase.from("bots").delete().eq("id", bot.id);
-
-    if (error) {
-      toast.error("Failed to delete bot");
-    } else {
+    try {
+      await api.deleteBot(bot.id);
       toast.success("Bot deleted successfully");
       navigate("/dashboard");
+    } catch (error) {
+      toast.error("Failed to delete bot");
     }
   };
 
