@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { api, session } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -9,117 +9,92 @@ import { Bot, Coins, Plus } from "lucide-react";
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
   const [bots, setBots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      if (user) {
-        fetchProfile();
-        fetchBots();
-      }
-    });
+    // Get or create user session
+    let currentUser = session.getUser();
+    if (!currentUser) {
+      // Create a demo user ID for first time users
+      const demoUserId = `user_${Date.now()}`;
+      session.setUser(demoUserId, "demo@example.com");
+      currentUser = session.getUser();
+    }
+    
+    setUser(currentUser);
+    if (currentUser) {
+      fetchBots(currentUser.id);
+    }
   }, []);
 
-  const fetchProfile = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", user?.id)
-      .single();
-
-    if (error) {
-      console.error("Error fetching profile:", error);
-    } else {
-      setProfile(data);
+  const fetchBots = async (userId: string) => {
+    try {
+      setLoading(true);
+      const data = await api.getBots(userId);
+      setBots(data || []);
+    } catch (error) {
+      console.error("Error fetching bots:", error);
+      toast.error("Failed to fetch bots");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchBots = async () => {
-    const { data } = await supabase
-      .from("bots")
-      .select("*")
-      .eq("user_id", user?.id);
-    setBots(data || []);
-  };
-
-  const handleClaimDaily = async () => {
-    if (!profile) return;
-
-    const lastClaim = profile.last_claim_at ? new Date(profile.last_claim_at) : null;
-    const now = new Date();
-
-    if (lastClaim && now.getTime() - lastClaim.getTime() < 24 * 60 * 60 * 1000) {
-      toast.error("You can only claim once per day!");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        gzp_balance: Number(profile.gzp_balance) + 10,
-        last_claim_at: now.toISOString(),
-      })
-      .eq("user_id", user?.id);
-
-    if (error) {
-      toast.error("Failed to claim daily reward");
-    } else {
-      toast.success("Claimed 10 GZP!");
-      fetchProfile();
-    }
-  };
-
-  if (!profile) {
-    return <div className="flex items-center justify-center p-8">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-          <Card className="border-border bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Coins className="h-5 w-5 text-primary" />
-                GZP Balance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-primary mb-4">
-                {Number(profile.gzp_balance).toFixed(2)}
-              </div>
-              <Button onClick={handleClaimDaily} className="w-full">
-                Claim Daily 10 GZP
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-accent" />
-                Your Bots
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-accent mb-4">{bots.length}</div>
-              <Button onClick={() => navigate("/create-bot")} className="w-full" variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Bot
-              </Button>
-            </CardContent>
-          </Card>
+        <Card className="border-border bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-accent" />
+              Your Bots
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold text-accent mb-4">{bots.length}</div>
+            <Button onClick={() => navigate("/create-bot")} className="w-full" variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Create New Bot
+            </Button>
+          </CardContent>
+        </Card>
 
         <Card className="border-border bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Account Info</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground">Email: {profile.email}</p>
-            {profile.chat_id && (
-              <p className="text-sm text-muted-foreground">Chat ID: {profile.chat_id}</p>
-            )}
+            <p className="text-sm text-muted-foreground">User ID: {user?.id}</p>
+            <p className="text-sm text-muted-foreground">Email: {user?.email}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Coins className="h-5 w-5 text-primary" />
+              Quick Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button onClick={() => navigate("/create-bot")} className="w-full" variant="outline">
+              Create Bot
+            </Button>
+            <Button onClick={() => navigate("/bot-management")} className="w-full" variant="outline">
+              Manage Bots
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -145,17 +120,17 @@ const Dashboard = () => {
                 <Card key={bot.id} className="border-border bg-secondary/50">
                   <CardHeader>
                     <CardTitle className="text-lg">{bot.name}</CardTitle>
-                    <CardDescription>{bot.channel_username}</CardDescription>
+                    <CardDescription>{bot.channelUsername}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-2 mb-4">
                       <div
                         className={`h-2 w-2 rounded-full ${
-                          bot.is_active ? "bg-green-500" : "bg-red-500"
+                          bot.isActive ? "bg-green-500" : "bg-red-500"
                         }`}
                       />
                       <span className="text-sm text-muted-foreground">
-                        {bot.is_active ? "Active" : "Inactive"}
+                        {bot.isActive ? "Active" : "Inactive"}
                       </span>
                     </div>
                     <Button

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { api, session } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,12 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ArrowLeft, Bot } from "lucide-react";
-import { User } from "@supabase/supabase-js";
 
 const CreateBot = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -25,64 +23,39 @@ const CreateBot = () => {
   });
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        navigate("/auth");
-      } else {
-        setUser(user);
-        fetchProfile(user.id);
-      }
-    });
-  }, [navigate]);
-
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-
-    if (data) {
-      setProfile(data);
+    const currentUser = session.getUser();
+    if (!currentUser) {
+      const demoUserId = `user_${Date.now()}`;
+      session.setUser(demoUserId, "demo@example.com");
+      setUser(session.getUser());
+    } else {
+      setUser(currentUser);
     }
-  };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user || !profile) return;
-
-    if (Number(profile.gzp_balance) < 10) {
-      toast.error("Insufficient GZP balance! You need 10 GZP to create a bot.");
-      return;
-    }
+    if (!user) return;
 
     setIsLoading(true);
 
     try {
-      const { error: botError } = await supabase.from("bots").insert({
-        user_id: user.id,
+      await api.createBot({
+        userId: user.id,
         name: formData.name,
-        telegram_token: formData.telegramToken,
-        channel_username: formData.channelUsername,
-        bot_image_url: formData.botImageUrl,
-        welcome_message: formData.welcomeMessage,
-        chat_id: formData.chatId,
+        telegramToken: formData.telegramToken,
+        channelUsername: formData.channelUsername,
+        botImageUrl: formData.botImageUrl || null,
+        welcomeMessage: formData.welcomeMessage,
+        chatId: formData.chatId || null,
+        isActive: true,
       });
 
-      if (botError) throw botError;
-
-      const { error: balanceError } = await supabase
-        .from("profiles")
-        .update({ gzp_balance: Number(profile.gzp_balance) - 10 })
-        .eq("user_id", user.id);
-
-      if (balanceError) throw balanceError;
-
-      toast.success("Bot created successfully! 10 GZP deducted.");
+      toast.success("Bot created successfully!");
       navigate("/dashboard");
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || "Failed to create bot");
     } finally {
       setIsLoading(false);
     }
@@ -108,12 +81,12 @@ const CreateBot = () => {
               </div>
               <CardTitle className="text-2xl">Create New Bot</CardTitle>
             </div>
-            <CardDescription>Cost: 10 GZP | Your balance: {profile ? Number(profile.gzp_balance).toFixed(2) : 0} GZP</CardDescription>
+            <CardDescription>Fill in the details to create your Telegram bot</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="name">Bot Name</Label>
+                <Label htmlFor="name">Bot Name *</Label>
                 <Input
                   id="name"
                   placeholder="My Awesome Bot"
@@ -124,14 +97,14 @@ const CreateBot = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="token">Telegram Bot Token</Label>
+                <Label htmlFor="telegramToken">Telegram Bot Token *</Label>
                 <Input
-                  id="token"
-                  type="password"
+                  id="telegramToken"
                   placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
                   value={formData.telegramToken}
                   onChange={(e) => setFormData({ ...formData, telegramToken: e.target.value })}
                   required
+                  type="password"
                 />
                 <p className="text-xs text-muted-foreground">
                   Get your bot token from @BotFather on Telegram
@@ -139,20 +112,23 @@ const CreateBot = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="channel">Channel Username</Label>
+                <Label htmlFor="channelUsername">Channel Username *</Label>
                 <Input
-                  id="channel"
+                  id="channelUsername"
                   placeholder="@mychannel"
                   value={formData.channelUsername}
                   onChange={(e) => setFormData({ ...formData, channelUsername: e.target.value })}
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Users must join this channel to use the bot
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">Bot Image URL (Optional)</Label>
+                <Label htmlFor="botImageUrl">Bot Image URL (Optional)</Label>
                 <Input
-                  id="image"
+                  id="botImageUrl"
                   placeholder="https://example.com/bot-image.jpg"
                   value={formData.botImageUrl}
                   onChange={(e) => setFormData({ ...formData, botImageUrl: e.target.value })}
@@ -160,18 +136,19 @@ const CreateBot = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="welcome">Welcome Message</Label>
+                <Label htmlFor="welcomeMessage">Welcome Message *</Label>
                 <Textarea
-                  id="welcome"
-                  placeholder="Welcome! Please join our channel to continue."
+                  id="welcomeMessage"
+                  placeholder="Welcome to the bot! Join our channel to get started."
                   value={formData.welcomeMessage}
                   onChange={(e) => setFormData({ ...formData, welcomeMessage: e.target.value })}
+                  required
                   rows={4}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="chatId">Your Chat ID (Optional)</Label>
+                <Label htmlFor="chatId">Admin Chat ID (Optional)</Label>
                 <Input
                   id="chatId"
                   placeholder="123456789"
@@ -179,20 +156,22 @@ const CreateBot = () => {
                   onChange={(e) => setFormData({ ...formData, chatId: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  For receiving broadcast notifications
+                  Your Telegram chat ID for admin notifications
                 </p>
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit" className="flex-1" disabled={isLoading}>
-                  {isLoading ? "Creating..." : "Create Bot (10 GZP)"}
-                </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => navigate("/dashboard")}
+                  disabled={isLoading}
+                  className="flex-1"
                 >
                   Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading} className="flex-1">
+                  {isLoading ? "Creating..." : "Create Bot"}
                 </Button>
               </div>
             </form>
