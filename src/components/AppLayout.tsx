@@ -1,64 +1,29 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { session } from "@/lib/api";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
-import { User as SupabaseUser } from "@supabase/supabase-js";
 
 export function AppLayout() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (!session) {
-        navigate("/auth");
-      }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (!session) {
-        navigate("/auth");
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    const currentUser = session.getUser();
+    if (!currentUser) {
+      navigate("/auth");
+    } else {
+      setUser(currentUser);
+      setProfile({ email: currentUser.email, gzp_balance: 0 });
+    }
   }, [navigate]);
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-      checkAdminStatus();
-    }
-  }, [user]);
-
-  const fetchProfile = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", user?.id)
-      .single();
-    setProfile(data);
-  };
-
-  const checkAdminStatus = async () => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user?.id)
-      .eq("role", "admin")
-      .single();
-    setIsAdmin(!!data);
-  };
-
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    session.clearUser();
     navigate("/auth");
   };
 

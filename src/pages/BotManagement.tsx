@@ -83,7 +83,7 @@ const BotManagement = () => {
 
     try {
       const response = await fetch(
-        `https://api.telegram.org/bot${bot.telegram_token}/setWebhook?url=${encodeURIComponent(webhookUrl)}`
+        `https://api.telegram.org/bot${bot.telegramToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`
       );
       const data = await response.json();
 
@@ -147,15 +147,15 @@ const BotManagement = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{bot.name}</h1>
-            <p className="text-muted-foreground">{bot.channel_username}</p>
+            <p className="text-muted-foreground">{bot.channelUsername}</p>
           </div>
           <div className="flex gap-2">
             <Button
-              variant={bot.is_active ? "destructive" : "default"}
+              variant={bot.isActive ? "destructive" : "default"}
               onClick={toggleBotStatus}
             >
               <Power className="h-4 w-4 mr-2" />
-              {bot.is_active ? "Deactivate" : "Activate"}
+              {bot.isActive ? "Deactivate" : "Activate"}
             </Button>
             <Button variant="destructive" onClick={deleteBot}>
               <Trash2 className="h-4 w-4 mr-2" />
@@ -238,8 +238,8 @@ const BotManagement = () => {
                     <div className="p-4 bg-muted/50 rounded-lg">
                       <div className="text-xs text-muted-foreground mb-1">Status</div>
                       <div className="flex items-center gap-2">
-                        <div className={`h-3 w-3 rounded-full animate-pulse ${bot.is_active ? "bg-green-500" : "bg-red-500"}`} />
-                        <span className="font-semibold">{bot.is_active ? "Active" : "Inactive"}</span>
+                        <div className={`h-3 w-3 rounded-full animate-pulse ${bot.isActive ? "bg-green-500" : "bg-red-500"}`} />
+                        <span className="font-semibold">{bot.isActive ? "Active" : "Inactive"}</span>
                       </div>
                     </div>
 
@@ -296,13 +296,13 @@ const BotManagement = () => {
                   <Label>Bot Link</Label>
                   <div className="flex gap-2">
                     <Input
-                      value={`https://t.me/${bot.telegram_token.split(":")[0]}`}
+                      value={`https://t.me/${bot.telegramToken.split(":")[0]}`}
                       readOnly
                       className="flex-1"
                     />
                     <Button
                       onClick={() =>
-                        window.open(`https://t.me/${bot.telegram_token.split(":")[0]}`, "_blank")
+                        window.open(`https://t.me/${bot.telegramToken.split(":")[0]}`, "_blank")
                       }
                       variant="outline"
                     >
@@ -327,25 +327,25 @@ const BotManagement = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Channel Username</Label>
-                  <Input value={bot.channel_username} readOnly />
+                  <Input value={bot.channelUsername} readOnly />
                 </div>
                 <div className="space-y-2">
                   <Label>Welcome Message</Label>
-                  <Input value={bot.welcome_message || "N/A"} readOnly />
+                  <Input value={bot.welcomeMessage || "N/A"} readOnly />
                 </div>
                 <div className="space-y-2">
                   <Label>Bot Image URL</Label>
-                  <Input value={bot.bot_image_url || "N/A"} readOnly />
+                  <Input value={bot.botImageUrl || "N/A"} readOnly />
                 </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
                   <div className="flex items-center gap-2">
                     <div
                       className={`h-3 w-3 rounded-full ${
-                        bot.is_active ? "bg-green-500" : "bg-red-500"
+                        bot.isActive ? "bg-green-500" : "bg-red-500"
                       }`}
                     />
-                    <span className="text-sm">{bot.is_active ? "Active" : "Inactive"}</span>
+                    <span className="text-sm">{bot.isActive ? "Active" : "Inactive"}</span>
                   </div>
                 </div>
               </CardContent>
