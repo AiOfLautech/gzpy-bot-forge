@@ -511,6 +511,45 @@ const handleCommands = async (supabase: any, botToken: string, botId: string, ch
   }
 };
 
+// Register bot commands with Telegram
+const registerBotCommands = async (botToken: string) => {
+  const commands = [
+    { command: "start", description: "Start the bot" },
+    { command: "help", description: "Show all commands" },
+    { command: "balance", description: "Check your balance" },
+    { command: "daily", description: "Claim daily rewards" },
+    { command: "work", description: "Work at your job" },
+    { command: "deposit", description: "Deposit money to bank" },
+    { command: "withdraw", description: "Withdraw from bank" },
+    { command: "shop", description: "Browse the shop" },
+    { command: "buy", description: "Buy an item" },
+    { command: "crime", description: "Commit crimes for money" },
+    { command: "rob", description: "Rob other users" },
+    { command: "jobs", description: "View available jobs" },
+    { command: "apply", description: "Apply for a job" },
+    { command: "inventory", description: "View your items" },
+    { command: "leaderboard", description: "View richest users" },
+    { command: "gamble", description: "Gamble your money" },
+    { command: "slots", description: "Play slot machine" },
+    { command: "minigames", description: "View all mini-games" },
+    { command: "rank", description: "Check your rank and XP" },
+    { command: "transfer", description: "Send money to others" },
+  ];
+
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commands }),
+    });
+    const result = await response.json();
+    console.log('Commands registered:', result);
+    return result;
+  } catch (error) {
+    console.error('Error registering commands:', error);
+  }
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -547,8 +586,11 @@ serve(async (req) => {
         const [command, ...args] = text.slice(1).toLowerCase().split(" ");
         
         if (command === "start") {
+          // Register commands on first start
+          await registerBotCommands(bot.telegram_token);
+          
           let welcomeText = bot.welcome_message || "Welcome! 🎉";
-          welcomeText += "\n\n📋 <b>Commands:</b>\n/balance - Check balance\n/daily - Daily reward\n/work - Work for money\n/help - Show help";
+          welcomeText += "\n\n📋 <b>Commands:</b>\n/balance - Check balance\n/daily - Daily reward\n/work - Work for money\n/help - Show all commands";
           
           if (bot.bot_image_url) {
             await fetch(`https://api.telegram.org/bot${bot.telegram_token}/sendPhoto`, {
