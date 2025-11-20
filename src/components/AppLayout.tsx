@@ -1,33 +1,76 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { session } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
+import { Session, User as SupabaseUser } from "@supabase/supabase-js";
 
 export function AppLayout() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const currentUser = session.getUser();
-    if (!currentUser) {
-      navigate("/auth");
-    } else {
-      setUser(currentUser);
-      setProfile({ email: currentUser.email, gzp_balance: 0 });
-    }
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (!session) {
+          navigate("/auth");
+        } else {
+          fetchProfile(session.user.id);
+        }
+        setLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (!session) {
+        navigate("/auth");
+      } else {
+        fetchProfile(session.user.id);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    if (data) {
+      setProfile(data);
+      
+      // Check if user is admin
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+      
+      setIsAdmin(roles?.some(r => r.role === 'admin') ?? false);
+    }
+  };
+
   const handleSignOut = async () => {
-    session.clearUser();
+    await supabase.auth.signOut();
     navigate("/auth");
   };
 
-  if (!user) {
+  if (loading || !user) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
