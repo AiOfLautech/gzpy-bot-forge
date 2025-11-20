@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, session } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -13,25 +13,26 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get or create user session
-    let currentUser = session.getUser();
-    if (!currentUser) {
-      // Create a demo user ID for first time users
-      const demoUserId = `user_${Date.now()}`;
-      session.setUser(demoUserId, "demo@example.com");
-      currentUser = session.getUser();
-    }
-    
-    setUser(currentUser);
-    if (currentUser) {
-      fetchBots(currentUser.id);
-    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        fetchBots(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
   }, []);
 
   const fetchBots = async (userId: string) => {
     try {
       setLoading(true);
-      const data = await api.getBots(userId);
+      const { data, error } = await supabase
+        .from('bots')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
       setBots(data || []);
     } catch (error) {
       console.error("Error fetching bots:", error);
@@ -53,8 +54,8 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+    <div className="container mx-auto px-4 py-4 sm:py-8 max-w-7xl">{/* Mobile padding adjustment */}
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-6 sm:mb-8">{/* Mobile responsive grid */}
         <Card className="border-border bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -76,8 +77,8 @@ const Dashboard = () => {
             <CardTitle>Account Info</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground">User ID: {user?.id}</p>
-            <p className="text-sm text-muted-foreground">Email: {user?.email}</p>
+            <p className="text-sm text-muted-foreground break-all">User ID: {user?.id}</p>
+            <p className="text-sm text-muted-foreground break-all">Email: {user?.email}</p>
           </CardContent>
         </Card>
 
@@ -115,7 +116,7 @@ const Dashboard = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">{/* Mobile responsive bot cards */}
               {bots.map((bot) => (
                 <Card key={bot.id} className="border-border bg-secondary/50">
                   <CardHeader>

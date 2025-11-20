@@ -79,21 +79,21 @@ export function AppLayout() {
       <div className="min-h-screen flex w-full bg-gradient-dark">
         <AppSidebar isAdmin={isAdmin} />
         <div className="flex-1 flex flex-col">
-          <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4">
+          <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-2 sm:px-4">{/* Mobile padding */}
             <SidebarTrigger />
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {profile && (
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">{profile.email}</span>
-                  <div className="px-2 py-1 bg-primary/20 rounded text-primary font-semibold">
+                <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                  <User className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground hidden sm:block" />
+                  <span className="text-muted-foreground hidden md:inline truncate max-w-[120px] sm:max-w-none">{profile.email}</span>
+                  <div className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-primary/20 rounded text-primary font-semibold whitespace-nowrap">
                     {Number(profile.gzp_balance).toFixed(0)} GZP
                   </div>
                 </div>
               )}
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
+              <Button variant="outline" size="sm" onClick={handleSignOut} className="text-xs sm:text-sm">
+                <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sign Out</span>
               </Button>
             </div>
           </header>

@@ -76,14 +76,14 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-dark flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="p-3 bg-gradient-primary rounded-xl shadow-glow-primary">
-              <Bot className="h-8 w-8 text-white" />
+        <div className="text-center mb-6 sm:mb-8">{/* Mobile spacing */}
+          <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
+            <div className="p-2 sm:p-3 bg-gradient-primary rounded-xl shadow-glow-primary">
+              <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">GZP Bot Manager</h1>
-          <p className="text-muted-foreground">Create and manage your Telegram bots</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">GZP Bot Manager</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Create and manage your Telegram bots</p>
         </div>
 
         <Card className="border-border bg-card/50 backdrop-blur-sm">
