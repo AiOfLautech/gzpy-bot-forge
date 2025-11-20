@@ -1,7 +1,50 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertBotSchema, insertUserEconomySchema, insertBotStatsSchema } from "@shared/schema";
+import { z } from "zod";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL!,
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY!
+);
+
+// Validation schemas
+const userIdSchema = z.string().uuid();
+const botCreateSchema = z.object({
+  name: z.string().min(1).max(100),
+  telegram_token: z.string().min(1),
+  channel_username: z.string().regex(/^@?[a-zA-Z0-9_]{5,32}$/),
+  welcome_message: z.string().max(1000).optional(),
+  bot_image_url: z.string().url().optional(),
+  chat_id: z.string().optional(),
+  userId: z.string().uuid()
+});
+
+// Auth middleware
+const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: "Unauthorized - No token provided" });
+  }
+
+  const token = authHeader.substring(7);
+  
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: "Unauthorized - Invalid token" });
+    }
+    
+    (req as any).user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: "Unauthorized - Token verification failed" });
+  }
+};
 
 // Shop items, jobs, crimes data
 const SHOP_ITEMS: Record<string, { name: string; price: number; description: string; category: string }> = {
@@ -51,15 +94,22 @@ export function registerRoutes(app: Express): Server {
   // API Routes
   
   // Get all bots for a user
-  app.get("/api/bots", async (req, res) => {
+  app.get("/api/bots", requireAuth, async (req, res) => {
     try {
-      const userId = req.query.userId as string;
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
+      const userId = userIdSchema.parse(req.query.userId);
+      const authenticatedUser = (req as any).user;
+      
+      // Verify the requesting user matches the userId parameter
+      if (userId !== authenticatedUser.id) {
+        return res.status(403).json({ error: "Forbidden - Cannot access other user's bots" });
       }
+      
       const bots = await storage.getBotsByUserId(userId);
       res.json(bots);
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid user ID format" });
+      }
       res.status(500).json({ error: error.message });
     }
   });

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { session } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,19 +16,37 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [chatId, setChatId] = useState("");
 
+  useEffect(() => {
+    // Check if user is already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate("/dashboard");
+      }
+    });
+  }, [navigate]);
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Generate a user ID from email
-      const userId = btoa(email).replace(/=/g, '');
-      session.setUser(userId, email);
-      
-      toast.success("Account created successfully!");
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+          data: {
+            chat_id: chatId || null
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success("Account created! Please check your email to verify.");
       navigate("/dashboard");
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || "Failed to create account");
     } finally {
       setIsLoading(false);
     }
@@ -39,14 +57,17 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // Generate a user ID from email
-      const userId = btoa(email).replace(/=/g, '');
-      session.setUser(userId, email);
-      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
       toast.success("Signed in successfully!");
       navigate("/dashboard");
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || "Failed to sign in");
     } finally {
       setIsLoading(false);
     }
