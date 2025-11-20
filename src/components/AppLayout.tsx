@@ -76,7 +76,7 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gradient-dark">
+      <div className="min-h-screen flex w-full bg-gradient-light">
         <AppSidebar isAdmin={isAdmin} />
         <div className="flex-1 flex flex-col">
           <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-2 sm:px-4">{/* Mobile padding */}
