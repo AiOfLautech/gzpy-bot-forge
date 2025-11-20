@@ -103,6 +103,56 @@ export type Database = {
         }
         Relationships: []
       }
+      commands: {
+        Row: {
+          bot_id: string | null
+          category: string
+          created_at: string | null
+          description: string
+          id: string
+          is_active: boolean | null
+          linked_commands: string[] | null
+          name: string
+          script_sample: string | null
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          bot_id?: string | null
+          category?: string
+          created_at?: string | null
+          description: string
+          id?: string
+          is_active?: boolean | null
+          linked_commands?: string[] | null
+          name: string
+          script_sample?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          bot_id?: string | null
+          category?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          is_active?: boolean | null
+          linked_commands?: string[] | null
+          name?: string
+          script_sample?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commands_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mini_game_sessions: {
         Row: {
           bot_id: string | null
